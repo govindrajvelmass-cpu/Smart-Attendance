@@ -1,0 +1,36 @@
+# Environment & Secrets (Never commit secrets or credentials)
+.env
+*.env
+.env.*
+!.env.example
+backend/.env
+backend/*.env
+backend/.env.*
+!backend/.env.example
+frontend/.env
+frontend/*.env
+frontend/.env.*
+!frontend/.env.example
+
+# Build Artifacts
+target/
+backend/target/
+dist/
+frontend/dist/
+node_modules/
+frontend/node_modules/
+
+# Temporary & Scratch files
+scratch/
+*.log
+*.tmp
+
+# IDE / Editor configurations
+.vscode/
+.idea/
+*.iml
+.classpath
+.project
+.settings/
+.DS_Store
+Thumbs.db
