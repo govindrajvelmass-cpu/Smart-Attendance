@@ -24,8 +24,9 @@ export default function AttendanceReportsPage() {
 
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
 
-  const { toastError } = useToast();
+  const { error: toastError, success: toastSuccess } = useToast();
 
   useEffect(() => {
     classApi.getAll().then((res) => setClasses(res.data)).catch(() => {});
@@ -35,6 +36,10 @@ export default function AttendanceReportsPage() {
   const fetchReport = async () => {
     try {
       setLoading(true);
+      if (startDate && endDate && startDate > endDate) {
+        toastError('From date cannot be after to date');
+        return;
+      }
       const params = {};
       if (selectedClassId) params.classId = selectedClassId;
       if (selectedStatus) params.status = selectedStatus;
@@ -50,15 +55,35 @@ export default function AttendanceReportsPage() {
     }
   };
 
-  const handleExportCsv = () => {
+  const handleExportCsv = async () => {
+    if (startDate && endDate && startDate > endDate) {
+      toastError('From date cannot be after to date');
+      return;
+    }
+
     const params = {};
     if (selectedClassId) params.classId = selectedClassId;
     if (selectedStatus) params.status = selectedStatus;
     if (startDate) params.startDate = startDate;
     if (endDate) params.endDate = endDate;
 
-    const exportUrl = reportApi.getExportUrl(params);
-    window.open(exportUrl, '_blank');
+    try {
+      setExporting(true);
+      const res = await reportApi.exportReport(params);
+      const blobUrl = URL.createObjectURL(res.data);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = `attendance_report_${startDate || 'all'}_${endDate || 'all'}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(blobUrl);
+      toastSuccess('Attendance report downloaded');
+    } catch (err) {
+      toastError('Unable to download the attendance report');
+    } finally {
+      setExporting(false);
+    }
   };
 
   return (
@@ -71,9 +96,9 @@ export default function AttendanceReportsPage() {
           </p>
         </div>
 
-        <button onClick={handleExportCsv} className="btn btn-primary">
+        <button onClick={handleExportCsv} className="btn btn-primary" disabled={exporting}>
           <Download size={16} />
-          <span>Export CSV</span>
+          <span>{exporting ? 'Downloading...' : 'Export CSV'}</span>
         </button>
       </div>
 
@@ -112,7 +137,7 @@ export default function AttendanceReportsPage() {
           </div>
 
           <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label" style={{ fontSize: '0.8rem' }}>Start Date</label>
+            <label className="form-label" style={{ fontSize: '0.8rem' }}>From Date</label>
             <input
               type="date"
               className="form-input"
@@ -122,7 +147,7 @@ export default function AttendanceReportsPage() {
           </div>
 
           <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label" style={{ fontSize: '0.8rem' }}>End Date</label>
+            <label className="form-label" style={{ fontSize: '0.8rem' }}>To Date</label>
             <input
               type="date"
               className="form-input"

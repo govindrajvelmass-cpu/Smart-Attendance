@@ -1,36 +1,40 @@
 package com.smartattendance.backend.service;
 
+import java.time.LocalDate;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.smartattendance.backend.dto.response.AttendanceRecordResponse;
 import com.smartattendance.backend.dto.response.AttendanceReportResponse;
 import com.smartattendance.backend.entity.Attendance;
 import com.smartattendance.backend.entity.AttendanceStatus;
+import com.smartattendance.backend.exception.BadRequestException;
 import com.smartattendance.backend.repository.AttendanceRepository;
-import com.smartattendance.backend.repository.AttendanceSessionRepository;
 import com.smartattendance.backend.util.CsvExportUtil;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDate;
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 public class ReportService {
 
     private final AttendanceRepository attendanceRepository;
-    private final AttendanceSessionRepository sessionRepository;
     private final AttendanceService attendanceService;
 
     public ReportService(AttendanceRepository attendanceRepository,
-                         AttendanceSessionRepository sessionRepository,
                          AttendanceService attendanceService) {
         this.attendanceRepository = attendanceRepository;
-        this.sessionRepository = sessionRepository;
         this.attendanceService = attendanceService;
     }
 
     @Transactional(readOnly = true)
     public AttendanceReportResponse getAttendanceReport(Long studentId, Long classId, LocalDate startDate, LocalDate endDate, AttendanceStatus status) {
+        if (startDate != null && endDate != null && startDate.isAfter(endDate)) {
+            throw new BadRequestException("Start date cannot be after end date");
+        }
+
         List<Attendance> list = attendanceRepository.findAll();
 
         if (studentId != null) {
@@ -59,7 +63,12 @@ public class ReportService {
 
         AttendanceReportResponse report = new AttendanceReportResponse();
         report.setTotalRecords(records.size());
-        report.setTotalSessions(sessionRepository.count());
+        Set<Long> sessionIds = list.stream()
+            .map(Attendance::getSession)
+            .filter(session -> session != null && session.getId() != null)
+            .map(session -> session.getId())
+            .collect(Collectors.toCollection(HashSet::new));
+        report.setTotalSessions(sessionIds.size());
 
         long present = records.stream().filter(r -> r.getStatus() == AttendanceStatus.PRESENT).count();
         long absent = records.stream().filter(r -> r.getStatus() == AttendanceStatus.ABSENT).count();
@@ -71,7 +80,7 @@ public class ReportService {
         report.setLateCount(late);
         report.setExcusedCount(excused);
 
-        double pct = records.size() > 0 ? ((double) (present + late) / records.size()) * 100.0 : 0.0;
+        double pct = !records.isEmpty() ? ((double) (present + late) / records.size()) * 100.0 : 0.0;
         report.setAttendancePercentage(Math.round(pct * 10.0) / 10.0);
         report.setRecords(records);
 

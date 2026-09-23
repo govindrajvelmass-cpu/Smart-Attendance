@@ -40,10 +40,15 @@ export default function RegisterPage() {
       success(`Registration successful! Logged in as ${user.name || user.username}`);
       navigate(user.role === 'TEACHER' ? '/teacher/dashboard' : '/student/dashboard');
     } catch (err) {
-      const msg =
-        err.response?.data?.message ||
-        err.response?.data?.error ||
-        'Registration failed. Please check your information.';
+      const backendMessage = err.response?.data?.message || err.response?.data?.error;
+      const isDev = import.meta.env.DEV;
+      const msg = backendMessage
+        ? isDev
+          ? `${backendMessage}${err.response?.status ? ` (HTTP ${err.response.status})` : ''}`
+          : 'Unable to complete registration. Please check your details and try again.'
+        : err.code === 'ERR_NETWORK' || err.message === 'Network Error'
+          ? 'Unable to reach the authentication service. Please try again later.'
+          : 'Registration failed. Please check your information.';
       setError(msg);
       toastError(msg);
     } finally {

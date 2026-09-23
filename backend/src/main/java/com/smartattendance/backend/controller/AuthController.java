@@ -1,5 +1,13 @@
 package com.smartattendance.backend.controller;
 
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.smartattendance.backend.dto.request.LoginRequest;
 import com.smartattendance.backend.dto.request.RefreshTokenRequest;
 import com.smartattendance.backend.dto.request.RegisterRequest;
@@ -8,10 +16,8 @@ import com.smartattendance.backend.dto.response.AuthResponse;
 import com.smartattendance.backend.dto.response.UserSummaryDto;
 import com.smartattendance.backend.security.UserPrincipal;
 import com.smartattendance.backend.service.AuthService;
+
 import jakarta.validation.Valid;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/auth")
