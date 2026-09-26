@@ -1,0 +1,10 @@
+.git/
+.gitignore
+.env
+frontend/
+scratch/
+backend/target/
+backend/.settings/
+backend/.project
+backend/.classpath
+*.log
