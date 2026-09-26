@@ -3,7 +3,7 @@ import axios from 'axios';
 const API_BASE_URL = (
   import.meta.env.VITE_API_URL ||
   import.meta.env.VITE_API_BASE_URL ||
-  'https://moderators-know-aruba-reflects.trycloudflare.com/api'
+  'https://smart-attendance-voj2.onrender.com/api'
 ).replace(/\/$/, '');
 
 const apiClient = axios.create({
