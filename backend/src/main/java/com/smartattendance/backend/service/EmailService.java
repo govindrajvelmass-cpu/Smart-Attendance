@@ -118,7 +118,7 @@ public class EmailService {
 
         if (!configured) {
             status.put("status", "SMTP Configuration Error");
-            status.put("message", "SMTP credentials missing. Please configure MAIL_USERNAME and MAIL_PASSWORD in backend/.env.");
+            status.put("message", "SMTP credentials missing. Please configure MAIL_USERNAME and MAIL_PASSWORD in Render Environment Variables (or backend/.env).");
             status.put("connected", false);
         } else {
             try {
@@ -216,7 +216,7 @@ public class EmailService {
                 resItem.put("studentId", studentIdStr);
                 resItem.put("email", s.getEmail());
                 resItem.put("status", "failed");
-                resItem.put("error", "SMTP credentials missing. Please configure MAIL_USERNAME and MAIL_PASSWORD in backend/.env.");
+                resItem.put("error", "SMTP credentials missing. Please configure MAIL_USERNAME and MAIL_PASSWORD in Render Environment Variables (or backend/.env).");
                 results.add(resItem);
 
                 Map<String, String> statusMap = new LinkedHashMap<>();
@@ -224,11 +224,11 @@ public class EmailService {
                 statusMap.put("rollNumber", s.getStudentNumber());
                 statusMap.put("studentName", fullName);
                 statusMap.put("email", s.getEmail());
-                statusMap.put("status", "FAILED: SMTP credentials not configured (set MAIL_USERNAME and MAIL_PASSWORD in backend/.env)");
+                statusMap.put("status", "FAILED: SMTP credentials not configured (set MAIL_USERNAME and MAIL_PASSWORD in Render Environment Variables or backend/.env)");
                 studentEmailStatuses.add(statusMap);
 
                 studentsSummary.add(Map.of("name", fullName, "email", s.getEmail(), "status", "FAILED"));
-                failedRecipients.add(Map.of("email", s.getEmail(), "reason", "SMTP credentials missing in backend/.env"));
+                failedRecipients.add(Map.of("email", s.getEmail(), "reason", "SMTP credentials missing in Render Environment Variables or backend/.env"));
                 failed++;
             }
 
@@ -238,7 +238,7 @@ public class EmailService {
             result.put("failed", failed);
             result.put("smtpConfigured", false);
             result.put("smtpStatus", "FAILED");
-            result.put("message", "SMTP credentials missing. Please configure MAIL_USERNAME and MAIL_PASSWORD in backend/.env.");
+            result.put("message", "SMTP credentials missing. Please configure MAIL_USERNAME and MAIL_PASSWORD in Render Environment Variables (or backend/.env).");
             result.put("results", results);
             result.put("studentStatuses", studentEmailStatuses);
             result.put("students", studentsSummary);
