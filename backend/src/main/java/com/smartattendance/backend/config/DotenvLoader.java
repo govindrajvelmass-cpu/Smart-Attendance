@@ -181,12 +181,41 @@ public class DotenvLoader {
     }
 
     private static void parseDatabaseUrl() {
+        String useH2 = checkKey("USE_H2");
         String dbUrl = checkKey("DATABASE_URL");
         if (dbUrl == null || dbUrl.isBlank()) {
             dbUrl = checkKey("MYSQL_URL");
         }
         if (dbUrl == null || dbUrl.isBlank()) {
             dbUrl = checkKey("SPRING_DATASOURCE_URL");
+        }
+
+        String dbHost = checkKey("DB_HOST");
+        boolean isRender = System.getenv("RENDER") != null;
+
+        // Activate H2 fallback if:
+        // 1. Explicitly requested with USE_H2=true or DATABASE_MODE=h2
+        // 2. OR running on Render/cloud and no external database URL or host was configured
+        boolean shouldUseH2 = "true".equalsIgnoreCase(useH2) ||
+                "h2".equalsIgnoreCase(checkKey("DATABASE_MODE")) ||
+                (isRender && (dbUrl == null || dbUrl.isBlank()) && (dbHost == null || dbHost.isBlank()));
+
+        if (shouldUseH2) {
+            String tmpDir = System.getProperty("java.io.tmpdir", "/tmp");
+            File h2File = new File(tmpDir, "smart_attendance");
+            String h2Path = h2File.getAbsolutePath().replace("\\", "/");
+            String h2Url = "jdbc:h2:file:" + h2Path + ";DB_CLOSE_DELAY=-1;MODE=MySQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE";
+
+            System.setProperty("spring.datasource.url", h2Url);
+            System.setProperty("SPRING_DATASOURCE_URL", h2Url);
+            System.setProperty("spring.datasource.driver-class-name", "org.h2.Driver");
+            System.setProperty("SPRING_DATASOURCE_DRIVER", "org.h2.Driver");
+            System.setProperty("spring.datasource.username", "sa");
+            System.setProperty("SPRING_DATASOURCE_USERNAME", "sa");
+            System.setProperty("spring.datasource.password", "");
+            System.setProperty("SPRING_DATASOURCE_PASSWORD", "");
+            log.info("==> [DATABASE] Fallback activated: using embedded H2 database (MySQL compatibility mode) at: {}", h2Url);
+            return;
         }
 
         if (dbUrl != null && !dbUrl.isBlank() && dbUrl.startsWith("mysql://")) {

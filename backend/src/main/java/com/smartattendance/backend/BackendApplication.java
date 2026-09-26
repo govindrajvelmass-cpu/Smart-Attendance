@@ -31,7 +31,8 @@ public class BackendApplication {
             String dbStatus = "FAILED";
             try (Connection conn = dataSource.getConnection()) {
                 if (conn.isValid(3)) {
-                    dbStatus = "CONNECTED";
+                    String productName = conn.getMetaData().getDatabaseProductName();
+                    dbStatus = "CONNECTED (" + productName + ")";
                 }
             } catch (Exception e) {
                 dbStatus = "FAILED: " + e.getMessage();
