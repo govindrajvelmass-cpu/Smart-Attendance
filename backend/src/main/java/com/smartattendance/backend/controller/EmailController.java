@@ -32,6 +32,10 @@ public class EmailController {
         String username = body.get("username");
         String password = body.get("password");
         String from = body.get("from");
-        return ResponseEntity.ok(emailService.updateCredentials(username, password, from));
+        String brevoKey = body.get("brevoApiKey");
+        if (brevoKey == null) brevoKey = body.get("brevoKey");
+        String resendKey = body.get("resendApiKey");
+        if (resendKey == null) resendKey = body.get("resendKey");
+        return ResponseEntity.ok(emailService.updateCredentials(username, password, from, brevoKey, resendKey));
     }
 }

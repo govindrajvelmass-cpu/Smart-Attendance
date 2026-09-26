@@ -27,3 +27,7 @@ services:
         sync: false
       - key: MAIL_PASSWORD
         sync: false
+      - key: BREVO_API_KEY
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
