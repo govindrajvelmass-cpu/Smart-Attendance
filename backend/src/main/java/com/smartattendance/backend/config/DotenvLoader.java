@@ -175,7 +175,54 @@ public class DotenvLoader {
             log.info("No .env file found in search paths. Using existing system/environment variables.");
         }
 
+        parseDatabaseUrl();
+
         loaded = true;
+    }
+
+    private static void parseDatabaseUrl() {
+        String dbUrl = checkKey("DATABASE_URL");
+        if (dbUrl == null || dbUrl.isBlank()) {
+            dbUrl = checkKey("MYSQL_URL");
+        }
+        if (dbUrl == null || dbUrl.isBlank()) {
+            dbUrl = checkKey("SPRING_DATASOURCE_URL");
+        }
+
+        if (dbUrl != null && !dbUrl.isBlank() && dbUrl.startsWith("mysql://")) {
+            try {
+                java.net.URI uri = new java.net.URI(dbUrl);
+                String userInfo = uri.getUserInfo();
+                String host = uri.getHost();
+                int port = uri.getPort() == -1 ? 3306 : uri.getPort();
+                String path = uri.getPath();
+                if (path != null && path.startsWith("/")) {
+                    path = path.substring(1);
+                }
+                String query = uri.getQuery();
+
+                String jdbcUrl = "jdbc:mysql://" + host + ":" + port + "/" + (path != null ? path : "");
+                if (query != null && !query.isEmpty()) {
+                    jdbcUrl += "?" + query;
+                } else {
+                    jdbcUrl += "?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true";
+                }
+
+                System.setProperty("spring.datasource.url", jdbcUrl);
+                System.setProperty("SPRING_DATASOURCE_URL", jdbcUrl);
+
+                if (userInfo != null && userInfo.contains(":")) {
+                    String[] parts = userInfo.split(":", 2);
+                    System.setProperty("spring.datasource.username", parts[0]);
+                    System.setProperty("SPRING_DATASOURCE_USERNAME", parts[0]);
+                    System.setProperty("spring.datasource.password", parts[1]);
+                    System.setProperty("SPRING_DATASOURCE_PASSWORD", parts[1]);
+                }
+                log.info("Auto-converted MySQL connection URL to JDBC format for host: {}:{}", host, port);
+            } catch (Exception e) {
+                log.warn("Could not parse mysql:// URL: {}", e.getMessage());
+            }
+        }
     }
 
     public static void printStartupCheck() {

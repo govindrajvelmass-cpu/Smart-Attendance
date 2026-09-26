@@ -56,8 +56,9 @@ public class BackendApplication {
             System.out.println("\n==========================================================");
             System.out.println("SMART ATTENDANCE — BACKEND STARTUP DIAGNOSTICS");
             System.out.println("==========================================================");
+            String portNum = DotenvLoader.getProperty("PORT", "8080");
             System.out.println("Database: " + dbStatus);
-            System.out.println("Server: RUNNING on port 8080");
+            System.out.println("Server: RUNNING on port " + portNum);
             System.out.println(".env file: " + envPath);
             System.out.println("\nSMTP Configuration & Diagnostic:");
             System.out.println("SMTP host: " + (hostSet ? host : "not configured"));
@@ -91,7 +92,7 @@ public class BackendApplication {
 
             log.info("Database: {}", dbStatus);
             log.info("SMTP configured: {}", configured ? "YES" : "NO");
-            log.info("Server: RUNNING on port 8080");
+            log.info("Server: RUNNING on port {}", portNum);
         };
     }
 

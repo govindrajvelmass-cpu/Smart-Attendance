@@ -1,0 +1,10 @@
+target/
+.git/
+.gitignore
+.env
+.idea/
+*.iml
+.settings/
+.project
+.classpath
+*.log
