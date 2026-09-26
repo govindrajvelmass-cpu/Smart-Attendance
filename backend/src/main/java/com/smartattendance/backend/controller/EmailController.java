@@ -26,4 +26,12 @@ public class EmailController {
     public ResponseEntity<Map<String, Object>> testSmtpConnection() {
         return ResponseEntity.ok(emailService.getSmtpStatus());
     }
+
+    @PostMapping("/configure")
+    public ResponseEntity<Map<String, Object>> configureSmtp(@RequestBody Map<String, String> body) {
+        String username = body.get("username");
+        String password = body.get("password");
+        String from = body.get("from");
+        return ResponseEntity.ok(emailService.updateCredentials(username, password, from));
+    }
 }

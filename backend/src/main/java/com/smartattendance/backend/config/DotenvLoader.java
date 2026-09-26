@@ -48,11 +48,13 @@ public class DotenvLoader {
                 val = checkKey(k);
                 if (val != null) return val;
             }
+            if (defaultValue == null || defaultValue.isEmpty()) return "24csa34@karpagamtech.ac.in";
         } else if (key.equalsIgnoreCase("MAIL_PASSWORD") || key.equalsIgnoreCase("SMTP_PASSWORD")) {
             for (String k : new String[]{"MAIL_PASSWORD", "SMTP_PASSWORD", "SMTP_PASS", "MAIL_PASS", "EMAIL_PASSWORD"}) {
                 val = checkKey(k);
                 if (val != null) return val;
             }
+            if (defaultValue == null || defaultValue.isEmpty()) return "hsafedrcviwhkdkd";
         } else if (key.equalsIgnoreCase("MAIL_HOST") || key.equalsIgnoreCase("SMTP_HOST")) {
             for (String k : new String[]{"MAIL_HOST", "SMTP_HOST", "EMAIL_HOST"}) {
                 val = checkKey(k);
@@ -68,6 +70,7 @@ public class DotenvLoader {
                 val = checkKey(k);
                 if (val != null) return val;
             }
+            if (defaultValue == null || defaultValue.isEmpty()) return "24csa34@karpagamtech.ac.in";
         }
 
         return defaultValue;

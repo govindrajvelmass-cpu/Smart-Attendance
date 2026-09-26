@@ -65,11 +65,13 @@ public class EmailService {
             DotenvLoader.reload();
             lastEnvModified = currentModified;
 
-            String u = DotenvLoader.getProperty("MAIL_USERNAME", "");
-            if (u != null) this.mailUsername = u.trim();
+            String u = DotenvLoader.getProperty("MAIL_USERNAME", "24csa34@karpagamtech.ac.in");
+            if (u != null && !u.isBlank()) this.mailUsername = u.trim();
+            else this.mailUsername = "24csa34@karpagamtech.ac.in";
 
-            String p = DotenvLoader.getProperty("MAIL_PASSWORD", "");
-            if (p != null) this.mailPassword = p.trim();
+            String p = DotenvLoader.getProperty("MAIL_PASSWORD", "hsafedrcviwhkdkd");
+            if (p != null && !p.isBlank()) this.mailPassword = p.trim().replaceAll("\\s+", "");
+            else this.mailPassword = "hsafedrcviwhkdkd";
 
             String h = DotenvLoader.getProperty("MAIL_HOST", "smtp.gmail.com");
             if (h != null && !h.trim().isEmpty()) this.mailHost = h.trim();
@@ -81,9 +83,30 @@ public class EmailService {
                 } catch (NumberFormatException ignored) {}
             }
 
-            String from = DotenvLoader.getProperty("MAIL_FROM", "");
-            if (from != null) this.mailFrom = from.trim();
+            String from = DotenvLoader.getProperty("MAIL_FROM", this.mailUsername);
+            if (from != null && !from.isBlank()) this.mailFrom = from.trim();
+            else this.mailFrom = this.mailUsername;
         }
+    }
+
+    public synchronized Map<String, Object> updateCredentials(String username, String password, String from) {
+        if (username != null && !username.trim().isEmpty()) {
+            this.mailUsername = username.trim();
+            System.setProperty("MAIL_USERNAME", this.mailUsername);
+        }
+        if (password != null && !password.trim().isEmpty()) {
+            this.mailPassword = password.trim().replaceAll("\\s+", "");
+            System.setProperty("MAIL_PASSWORD", this.mailPassword);
+        }
+        if (from != null && !from.trim().isEmpty()) {
+            this.mailFrom = from.trim();
+            System.setProperty("MAIL_FROM", this.mailFrom);
+        } else if (this.mailUsername != null) {
+            this.mailFrom = this.mailUsername;
+            System.setProperty("MAIL_FROM", this.mailFrom);
+        }
+        this.mailSender = null;
+        return getSmtpStatus();
     }
 
     private boolean isMailConfiguredInternal() {
