@@ -61,9 +61,13 @@ public class EmailService {
     @Value("${app.mail.resend-api-key:${RESEND_API_KEY:}}")
     private String resendApiKey;
 
+    @Value("${app.mail.relay-url:${MAIL_RELAY_URL:${GOOGLE_SCRIPT_URL:}}}")
+    private String mailRelayUrl;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final HttpClient httpClient = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(10))
+            .followRedirects(HttpClient.Redirect.ALWAYS)
+            .connectTimeout(Duration.ofSeconds(15))
             .build();
 
     private long lastEnvModified = -1;
@@ -110,14 +114,24 @@ public class EmailService {
 
             String rKey = DotenvLoader.getProperty("RESEND_API_KEY", "");
             if (rKey != null && !rKey.isBlank()) this.resendApiKey = rKey.trim();
+
+            String rUrl = DotenvLoader.getProperty("MAIL_RELAY_URL", "");
+            if (rUrl == null || rUrl.isBlank()) {
+                rUrl = DotenvLoader.getProperty("GOOGLE_SCRIPT_URL", "");
+            }
+            if (rUrl != null && !rUrl.isBlank()) this.mailRelayUrl = rUrl.trim();
         }
     }
 
     public synchronized Map<String, Object> updateCredentials(String username, String password, String from) {
-        return updateCredentials(username, password, from, null, null);
+        return updateCredentials(username, password, from, null, null, null);
     }
 
     public synchronized Map<String, Object> updateCredentials(String username, String password, String from, String brevoKey, String resendKey) {
+        return updateCredentials(username, password, from, brevoKey, resendKey, null);
+    }
+
+    public synchronized Map<String, Object> updateCredentials(String username, String password, String from, String brevoKey, String resendKey, String relayUrl) {
         if (username != null && !username.trim().isEmpty()) {
             this.mailUsername = username.trim();
             System.setProperty("MAIL_USERNAME", this.mailUsername);
@@ -141,11 +155,17 @@ public class EmailService {
             this.resendApiKey = resendKey.trim();
             System.setProperty("RESEND_API_KEY", this.resendApiKey);
         }
+        if (relayUrl != null && !relayUrl.trim().isEmpty()) {
+            this.mailRelayUrl = relayUrl.trim();
+            System.setProperty("MAIL_RELAY_URL", this.mailRelayUrl);
+        }
         return getSmtpStatus();
     }
 
     public boolean isHttpEmailConfigured() {
-        return (brevoApiKey != null && !brevoApiKey.isBlank()) || (resendApiKey != null && !resendApiKey.isBlank());
+        return (mailRelayUrl != null && !mailRelayUrl.isBlank()) ||
+               (brevoApiKey != null && !brevoApiKey.isBlank()) ||
+               (resendApiKey != null && !resendApiKey.isBlank());
     }
 
     private boolean isMailConfiguredInternal() {
@@ -173,7 +193,14 @@ public class EmailService {
         Map<String, Object> status = new LinkedHashMap<>();
 
         if (isHttpEmailConfigured()) {
-            String provider = (brevoApiKey != null && !brevoApiKey.isBlank()) ? "Brevo HTTP API" : "Resend HTTP API";
+            String provider;
+            if (mailRelayUrl != null && !mailRelayUrl.isBlank()) {
+                provider = "Google Gmail Relay (HTTPS / port 443)";
+            } else if (brevoApiKey != null && !brevoApiKey.isBlank()) {
+                provider = "Brevo HTTP API";
+            } else {
+                provider = "Resend HTTP API";
+            }
             status.put("configured", true);
             status.put("provider", provider);
             status.put("host", "api (HTTPS / port 443)");
@@ -478,12 +505,42 @@ public class EmailService {
 
     public void sendViaHttpApi(Student student, String subject, String htmlContent, String textContent) throws Exception {
         String studentName = student.getFirstName() + " " + student.getLastName();
-        if (brevoApiKey != null && !brevoApiKey.isBlank()) {
+        if (mailRelayUrl != null && !mailRelayUrl.isBlank()) {
+            sendViaGoogleRelay(student.getEmail(), studentName, subject, htmlContent, textContent);
+        } else if (brevoApiKey != null && !brevoApiKey.isBlank()) {
             sendViaBrevo(student.getEmail(), studentName, subject, htmlContent, textContent);
         } else if (resendApiKey != null && !resendApiKey.isBlank()) {
             sendViaResend(student.getEmail(), subject, htmlContent, textContent);
         } else {
-            throw new IllegalStateException("Render Free tier blocks outbound SMTP. Please configure BREVO_API_KEY in Render Environment Variables.");
+            throw new IllegalStateException("Render Free tier blocks outbound SMTP. Please configure MAIL_RELAY_URL (Google Web App URL) or BREVO_API_KEY in Render Environment Variables.");
+        }
+    }
+
+    public void sendViaGoogleRelay(String toEmail, String toName, String subject, String htmlContent, String textContent) throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("to", toEmail);
+        body.put("name", toName != null ? toName : toEmail);
+        body.put("subject", subject);
+        body.put("htmlBody", htmlContent);
+        if (textContent != null && !textContent.isBlank()) {
+            body.put("textBody", textContent);
+        }
+
+        String json = objectMapper.writeValueAsString(body);
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(mailRelayUrl.trim()))
+                .header("Content-Type", "application/json")
+                .timeout(Duration.ofSeconds(20))
+                .POST(HttpRequest.BodyPublishers.ofString(json, StandardCharsets.UTF_8))
+                .build();
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        if (response.statusCode() >= 200 && response.statusCode() < 400) {
+            log.info("Email delivered via Google Gmail Relay over HTTPS (port 443) to {}.", toEmail);
+        } else {
+            log.error("Google Gmail Relay error (HTTP {}): {}", response.statusCode(), response.body());
+            throw new RuntimeException("Google Gmail Relay error (" + response.statusCode() + "): " + response.body());
         }
     }
 

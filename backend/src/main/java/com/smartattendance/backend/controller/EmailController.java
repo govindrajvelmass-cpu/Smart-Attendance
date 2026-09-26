@@ -36,6 +36,9 @@ public class EmailController {
         if (brevoKey == null) brevoKey = body.get("brevoKey");
         String resendKey = body.get("resendApiKey");
         if (resendKey == null) resendKey = body.get("resendKey");
-        return ResponseEntity.ok(emailService.updateCredentials(username, password, from, brevoKey, resendKey));
+        String relayUrl = body.get("mailRelayUrl");
+        if (relayUrl == null) relayUrl = body.get("relayUrl");
+        if (relayUrl == null) relayUrl = body.get("googleScriptUrl");
+        return ResponseEntity.ok(emailService.updateCredentials(username, password, from, brevoKey, resendKey, relayUrl));
     }
 }
