@@ -105,7 +105,6 @@ public class EmailService {
             this.mailFrom = this.mailUsername;
             System.setProperty("MAIL_FROM", this.mailFrom);
         }
-        this.mailSender = null;
         return getSmtpStatus();
     }
 
