@@ -34,11 +34,11 @@ public class AttendanceController {
     }
 
     @PostMapping("/mark")
-    @PreAuthorize("hasRole('STUDENT')")
     public ResponseEntity<AttendanceRecordResponse> markAttendance(
             @Valid @RequestBody MarkAttendanceRequest request,
             @AuthenticationPrincipal UserPrincipal currentUser) {
-        AttendanceRecordResponse record = attendanceService.markAttendance(request, currentUser.getId());
+        Long studentUserId = currentUser != null ? currentUser.getId() : null;
+        AttendanceRecordResponse record = attendanceService.markAttendance(request, studentUserId);
         return new ResponseEntity<>(record, HttpStatus.CREATED);
     }
 

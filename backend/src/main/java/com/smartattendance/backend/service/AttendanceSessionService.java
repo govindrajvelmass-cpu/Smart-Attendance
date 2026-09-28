@@ -188,6 +188,13 @@ public class AttendanceSessionService {
         AttendanceSession session = sessionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Attendance session not found with id: " + id));
 
+        if (session.getStatus() != SessionStatus.CLOSED) {
+            session.setStatus(SessionStatus.ACTIVE);
+            if (session.getStartTime() == null) {
+                session.setStartTime(LocalTime.now());
+            }
+        }
+
         java.util.Map<String, Object> result = emailService.sendSessionNotificationEmails(session);
         session.setEmailStatus((String) result.get("smtpStatus"));
         sessionRepository.save(session);

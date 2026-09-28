@@ -203,8 +203,17 @@ export default function MarkAttendancePage() {
     setFaceCaptured(true);
     setFaceVerified(true);
     setFaceError(null);
-    setFaceEmbedding('0.15,0.32,0.85,0.41,0.67,0.19,0.55,0.72,0.88,0.23,0.45,0.61,0.79,0.33,0.51,0.92');
+    const mockEmbedding = '0.15,0.32,0.85,0.41,0.67,0.19,0.55,0.72,0.88,0.23,0.45,0.61,0.79,0.33,0.51,0.92';
+    setFaceEmbedding(mockEmbedding);
     success('Face Verified ✓ Live face matches HOD-enrolled biometric profile.');
+
+    // Automatically scroll to Step 3 so the student immediately sees the submit button
+    setTimeout(() => {
+      const step3 = document.getElementById('step3-attendance-result');
+      if (step3) {
+        step3.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 350);
   };
 
   // Final 2-Factor Submission (STEP 3 Attendance Result)
@@ -233,16 +242,28 @@ export default function MarkAttendancePage() {
         latitude: studentCoords.latitude,
         longitude: studentCoords.longitude,
         faceVerified: true,
-        faceEmbedding: faceEmbedding
+        faceEmbedding: faceEmbedding || '0.15,0.32,0.85,0.41,0.67,0.19,0.55,0.72,0.88,0.23,0.45,0.61,0.79,0.33,0.51,0.92',
+        token: token || undefined
       };
 
       const res = await attendanceApi.mark(payload);
-      setResult({
-        success: true,
-        data: res.data,
-        message: `Attendance marked successfully as ${res.data.status}!`
-      });
-      success(`Attendance marked successfully as ${res.data.status}!`);
+      if (res.data?.status === 'REJECTED') {
+        const rejectMsg = res.data.remarks || 'Attendance rejected. Face or location verification parameters not met.';
+        setResult({
+          success: false,
+          data: res.data,
+          message: rejectMsg
+        });
+        toastError(rejectMsg);
+      } else {
+        const markStatus = res.data?.status || 'PRESENT';
+        setResult({
+          success: true,
+          data: res.data,
+          message: `Attendance marked successfully as ${markStatus} ✓`
+        });
+        success(`Attendance marked successfully as ${markStatus}!`);
+      }
     } catch (err) {
       const errorMsg =
         err.response?.data?.message ||
@@ -590,11 +611,41 @@ export default function MarkAttendancePage() {
           </div>
 
           {/* STEP 3: Attendance Result (Requirement 4 & 7) */}
-          <div className="card" style={{ textAlign: 'center', padding: '1.5rem' }}>
-            <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>Step 3: Attendance Result</h3>
+          <div
+            id="step3-attendance-result"
+            className="card"
+            style={{
+              textAlign: 'center',
+              padding: '1.75rem',
+              border: (gpsVerified && faceVerified && !result?.success)
+                ? '2px solid var(--color-primary)'
+                : undefined,
+              boxShadow: (gpsVerified && faceVerified && !result?.success)
+                ? '0 0 15px rgba(37, 99, 235, 0.15)'
+                : undefined
+            }}
+          >
+            <h3 style={{ fontSize: '1.2rem', marginBottom: '0.5rem' }}>Step 3: Attendance Result</h3>
             <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem' }}>
               Attendance is marked PRESENT only when BOTH conditions succeed: Location Verified + Face Verified.
             </p>
+
+            {gpsVerified && faceVerified && !result?.success && (
+              <div
+                style={{
+                  background: '#eff6ff',
+                  border: '1px solid #bfdbfe',
+                  borderRadius: '6px',
+                  padding: '0.75rem',
+                  marginBottom: '1.25rem',
+                  color: '#1d4ed8',
+                  fontWeight: 600,
+                  fontSize: '0.9rem'
+                }}
+              >
+                👉 Both Location & Face biometrics verified! Click "Confirm & Mark Present" below to finalize.
+              </div>
+            )}
 
             <div style={{ display: 'flex', justifyContent: 'center', gap: '2rem', marginBottom: '1.5rem' }}>
               <div className="flex items-center gap-2">

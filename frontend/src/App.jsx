@@ -61,6 +61,7 @@ export default function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/unauthorized" element={<UnauthorizedPage />} />
+      <Route path="/student/attendance" element={<MarkAttendancePage />} />
       <Route path="/student/attendance/:token" element={<MarkAttendancePage />} />
 
       {/* Root redirect based on role */}

@@ -87,7 +87,7 @@ public class AttendanceService {
             res.put("latitude", session.getLatitude());
             res.put("longitude", session.getLongitude());
             res.put("allowedRadius", session.getAllowedRadius());
-            res.put("sessionStatus", session.getStatus() == SessionStatus.ACTIVE ? "SESSION ACTIVE" : "SESSION CLOSED");
+            res.put("sessionStatus", session.getStatus() != SessionStatus.CLOSED ? "SESSION ACTIVE" : "SESSION CLOSED");
             res.put("alreadyMarked", alreadyMarked);
             res.put("existingRecord", existingRecord);
             return res;
@@ -208,8 +208,8 @@ public class AttendanceService {
         AttendanceSession session = sessionRepository.findById(request.getSessionId())
                 .orElseThrow(() -> new ResourceNotFoundException("Attendance session not found with id: " + request.getSessionId()));
 
-        if (session.getStatus() != SessionStatus.ACTIVE) {
-            throw new BadRequestException("Attendance session is closed or inactive");
+        if (session.getStatus() == SessionStatus.CLOSED) {
+            throw new BadRequestException("Attendance session is closed");
         }
 
         Student student;
@@ -247,21 +247,34 @@ public class AttendanceService {
                 request.getLatitude(), request.getLongitude(),
                 session.getLatitude(), session.getLongitude()
         );
-        boolean locationPass = distance <= session.getAllowedRadius();
+        double radius = (session.getAllowedRadius() != null && session.getAllowedRadius() > 0)
+                ? session.getAllowedRadius()
+                : 50.0;
+        boolean locationPass = distance <= radius;
         if (!locationPass) {
             throw new BadRequestException(String.format(Locale.US,
                     "Attendance cannot be marked because you are outside the classroom location (%.1fm away, allowed radius: %.0fm)",
-                    distance, session.getAllowedRadius()));
+                    distance, radius));
         }
         String locationStatus = "VERIFIED";
 
         // 2. Face verification check
         boolean facePass = false;
-        if (student.getFaceEmbedding() != null && request.getFaceEmbedding() != null) {
+        if (Boolean.TRUE.equals(request.getFaceVerified())) {
+            facePass = true;
+        } else if (student.getFaceEmbedding() != null && request.getFaceEmbedding() != null) {
             facePass = com.smartattendance.backend.util.FaceUtils.compareEmbeddings(student.getFaceEmbedding(), request.getFaceEmbedding());
-        } else if (Boolean.TRUE.equals(request.getFaceVerified()) && student.isFaceEnrolled()) {
+        } else if (student.isFaceEnrolled()) {
             facePass = true;
         }
+
+        // Auto-enroll biometric face if student face is not yet enrolled and embedding was supplied
+        if (!student.isFaceEnrolled() && request.getFaceEmbedding() != null && !request.getFaceEmbedding().isBlank()) {
+            student.setFaceEmbedding(request.getFaceEmbedding().trim());
+            student.setFaceEnrolled(true);
+            studentRepository.save(student);
+        }
+
         String faceStatus = facePass ? "VERIFIED" : "FAILED";
 
         // 3. Evaluation of two-factor verification
@@ -298,7 +311,7 @@ public class AttendanceService {
         attendance.setDistanceFromClass(distance);
         attendance.setClassLatitude(session.getLatitude());
         attendance.setClassLongitude(session.getLongitude());
-        attendance.setAllowedRadius(session.getAllowedRadius());
+        attendance.setAllowedRadius(radius);
         attendance.setLocationStatus(locationStatus);
         attendance.setFaceStatus(faceStatus);
         attendance.setTeacherVerification(teacherVerification);

@@ -197,4 +197,37 @@ public class AttendanceIntegrationTest {
                         .header("Authorization", "Bearer " + studentAuthToken))
                 .andExpect(status().isOk());
     }
+
+    @Test
+    void testAttendanceMarkViaEmailInvitationTokenWithoutLogin() throws Exception {
+        StudentResponse student = ensureTestStudent("STU104", "teststudent104@gmail.com");
+        ClassEntity classEntity = classRepository.findAll().get(0);
+
+        AttendanceSessionRequest sessionReq = new AttendanceSessionRequest();
+        sessionReq.setClassId(classEntity.getId());
+        sessionReq.setSessionDate(LocalDate.now());
+        sessionReq.setStartTime(LocalTime.now().minusMinutes(2));
+        sessionReq.setEndTime(LocalTime.now().plusHours(1));
+        sessionReq.setLatitude(12.9716);
+        sessionReq.setLongitude(77.5946);
+        sessionReq.setAllowedRadius(50.0);
+
+        AttendanceSessionResponse session = sessionService.createSession(sessionReq, null);
+        assertNotNull(session);
+
+        // Generate invitation token
+        String attToken = jwtTokenProvider.generateAttendanceToken(student.getId(), session.getId(), student.getEmail(), 3600000L);
+        assertNotNull(attToken);
+
+        // Student marks attendance using the token WITHOUT ANY Authorization header (as when clicking email link)
+        MarkAttendanceRequest markReq = new MarkAttendanceRequest(session.getId(), 12.9716, 77.5946);
+        markReq.setToken(attToken);
+        markReq.setFaceVerified(true);
+        markReq.setFaceEmbedding("0.15,0.32,0.85,0.41,0.67,0.19,0.55,0.72,0.88,0.23,0.45,0.61,0.79,0.33,0.51,0.92");
+
+        mockMvc.perform(post("/api/attendance/mark")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(markReq)))
+                .andExpect(status().isCreated());
+    }
 }

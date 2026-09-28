@@ -44,8 +44,12 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+    const isPublicAttendanceRoute =
+      window.location.pathname.includes('/student/attendance') ||
+      originalRequest?.url?.includes('/attendance/token') ||
+      originalRequest?.url?.includes('/attendance/mark');
 
-    if (error.response?.status === 401 && !originalRequest._retry && !originalRequest.url.includes('/auth/login')) {
+    if (error.response?.status === 401 && !originalRequest._retry && !originalRequest.url?.includes('/auth/login') && !isPublicAttendanceRoute) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
