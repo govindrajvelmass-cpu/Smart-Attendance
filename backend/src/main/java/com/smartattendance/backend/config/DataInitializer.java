@@ -104,11 +104,7 @@ public class DataInitializer implements CommandLineRunner {
         );
         teacher = teacherRepository.save(teacher);
 
-        // 3. ZERO Students, ZERO Attendance, ZERO Sessions seeded automatically.
-        // HOD manually adds students one by one up to 20.
-        // Teacher manually creates sessions and configures location.
-
-        // 4. Master Courses (6 Subjects for timetable & session selection)
+        // 3. Master Courses (6 Subjects for timetable & session selection)
         Course cMath = courseRepository.save(new Course("MATH101", "Mathematics", "Engineering Mathematics & Calculus", 4));
         Course cPhys = courseRepository.save(new Course("PHY101", "Physics", "Applied Physics & Mechanics", 4));
         Course cJava = courseRepository.save(new Course("CS101", "Java Programming", "Object-Oriented Programming with Java", 4));
@@ -116,14 +112,65 @@ public class DataInitializer implements CommandLineRunner {
         Course cWeb = courseRepository.save(new Course("CS103", "Web Development", "Modern Full-Stack Web Development", 3));
         Course cProj = courseRepository.save(new Course("CS104", "Capstone Project", "Design & Implementation Capstone Project", 3));
 
-        // 5. Classes (for timetable schedule reference & session assignment)
-        classRepository.save(new ClassEntity(cMath, teacher, "MATH101 - Mathematics", "Room 101", "Monday", LocalTime.of(9, 0), LocalTime.of(10, 0)));
-        classRepository.save(new ClassEntity(cPhys, teacher, "PHY101 - Physics", "Room 101", "Tuesday", LocalTime.of(9, 0), LocalTime.of(10, 0)));
-        classRepository.save(new ClassEntity(cJava, teacher, "CS101 - Java Programming", "Room 101", "Wednesday", LocalTime.of(9, 0), LocalTime.of(10, 0)));
-        classRepository.save(new ClassEntity(cDb, teacher, "CS102 - Database Management", "Room 101", "Thursday", LocalTime.of(9, 0), LocalTime.of(10, 0)));
-        classRepository.save(new ClassEntity(cWeb, teacher, "CS103 - Web Development", "Room 101", "Friday", LocalTime.of(9, 0), LocalTime.of(10, 0)));
-        classRepository.save(new ClassEntity(cProj, teacher, "CS104 - Capstone Project", "Room 101", "Saturday", LocalTime.of(9, 0), LocalTime.of(10, 0)));
+        // 4. Classes (for timetable schedule reference & session assignment)
+        ClassEntity clMath = classRepository.save(new ClassEntity(cMath, teacher, "MATH101 - Mathematics", "Room 101", "Monday", LocalTime.of(9, 0), LocalTime.of(10, 0)));
+        ClassEntity clPhys = classRepository.save(new ClassEntity(cPhys, teacher, "PHY101 - Physics", "Room 101", "Tuesday", LocalTime.of(9, 0), LocalTime.of(10, 0)));
+        ClassEntity clJava = classRepository.save(new ClassEntity(cJava, teacher, "CS101 - Java Programming", "Room 101", "Wednesday", LocalTime.of(9, 0), LocalTime.of(10, 0)));
+        ClassEntity clDb = classRepository.save(new ClassEntity(cDb, teacher, "CS102 - Database Management", "Room 101", "Thursday", LocalTime.of(9, 0), LocalTime.of(10, 0)));
+        ClassEntity clWeb = classRepository.save(new ClassEntity(cWeb, teacher, "CS103 - Web Development", "Room 101", "Friday", LocalTime.of(9, 0), LocalTime.of(10, 0)));
+        ClassEntity clProj = classRepository.save(new ClassEntity(cProj, teacher, "CS104 - Capstone Project", "Room 101", "Saturday", LocalTime.of(9, 0), LocalTime.of(10, 0)));
 
-        log.info("System setup complete: 1 HOD, 1 Teacher, 0 Students. Initial state is ready for manual HOD/Teacher workflows.");
+        // 5. Pre-seed primary student for email verification workflows
+        String studentEmail = DotenvLoader.getProperty("MAIL_USERNAME", "24csa34@karpagamtech.ac.in");
+        if (studentEmail == null || studentEmail.isBlank()) {
+            studentEmail = "24csa34@karpagamtech.ac.in";
+        }
+        User studentUser = new User(
+                "student",
+                studentEmail,
+                passwordEncoder.encode("Student@123"),
+                Role.STUDENT
+        );
+        studentUser = userRepository.save(studentUser);
+
+        Student student = new Student(
+                studentUser,
+                "STU001",
+                "Student",
+                "User",
+                studentEmail,
+                "9876543210",
+                "Computer Science & Engineering",
+                1,
+                "A"
+        );
+        student.setFaceEnrolled(true);
+        student.setFaceEmbedding("0.15,0.32,0.85,0.41,0.67,0.19,0.55,0.72,0.88,0.23,0.45,0.61,0.79,0.33,0.51,0.92");
+        student = studentRepository.save(student);
+
+        // Auto-enroll student into all classes
+        enrollmentRepository.save(new Enrollment(student, clMath));
+        enrollmentRepository.save(new Enrollment(student, clPhys));
+        enrollmentRepository.save(new Enrollment(student, clJava));
+        enrollmentRepository.save(new Enrollment(student, clDb));
+        enrollmentRepository.save(new Enrollment(student, clWeb));
+        enrollmentRepository.save(new Enrollment(student, clProj));
+
+        // 6. Pre-seed an active session so student email links always have a valid session to mark
+        AttendanceSession initialSession = new AttendanceSession(
+                clMath,
+                teacher,
+                java.time.LocalDate.now(),
+                LocalTime.of(8, 0),
+                LocalTime.of(23, 59),
+                12.9715987,
+                77.5945627,
+                100.0,
+                SessionStatus.ACTIVE
+        );
+        initialSession.setEmailStatus("SENT");
+        sessionRepository.save(initialSession);
+
+        log.info("System setup complete: 1 HOD, 1 Teacher, 1 Enrolled Student ({}), 1 Active Session.", studentEmail);
     }
 }

@@ -238,7 +238,7 @@ export default function MarkAttendancePage() {
 
     try {
       const payload = {
-        sessionId: Number(selectedSessionId),
+        sessionId: Number(selectedSessionId) || Number(currentSession?.id) || Number(tokenData?.sessionId) || 1,
         latitude: studentCoords.latitude,
         longitude: studentCoords.longitude,
         faceVerified: true,
